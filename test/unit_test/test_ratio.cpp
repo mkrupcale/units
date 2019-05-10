@@ -20,29 +20,29 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "units/bits/ratio_tools.h"
+#include "units/ratio.h"
 
 namespace {
 
   using namespace units;
-  
-  // static_sign
 
-  static_assert(static_sign<2>::value == 1);
-  static_assert(static_sign<-3>::value == -1);
-  static_assert(static_sign<0>::value == 1);
+  static_assert(ratio(2, 4) == ratio(1, 2));
 
-  // static_abs
+  static_assert(4 * ratio(1, 8) == ratio(1, 2));
+  static_assert(4 * ratio(1, 2) == ratio(2));
+  static_assert(ratio(1, 8) * 2 == ratio(1, 4));
+  static_assert(ratio(1, 2) * 8 == ratio(4));
 
-  static_assert(static_abs<2>::value == 2);
-  static_assert(static_abs<-3>::value == 3);
-  static_assert(static_abs<0>::value == 0);
+  static_assert(4 / ratio(2) == ratio(2));
+  static_assert(2 / ratio(8) == ratio(1, 4));
+  static_assert(ratio(1, 8) / 2 == ratio(1, 16));
+  static_assert(ratio(6) / 3 == ratio(2));
 
   // common_ratio
 
-  static_assert(std::is_same_v<common_ratio_t<std::ratio<1>, std::kilo>, std::ratio<1>>);
-  static_assert(std::is_same_v<common_ratio_t<std::kilo, std::ratio<1>>, std::ratio<1>>);
-  static_assert(std::is_same_v<common_ratio_t<std::ratio<1>, std::milli>, std::milli>);
-  static_assert(std::is_same_v<common_ratio_t<std::milli, std::ratio<1>>, std::milli>);
+  static_assert(common_ratio(ratio(1), std::kilo()) == ratio(1));
+  static_assert(common_ratio(std::kilo(), ratio(1)) == ratio(1));
+  static_assert(common_ratio(ratio(1), std::milli()) == std::milli());
+  static_assert(common_ratio(std::milli(), ratio(1)) == std::milli());
 
 }  // namespace

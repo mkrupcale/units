@@ -25,6 +25,8 @@
 #include <units/bits/config.h>
 #include <experimental/ranges/concepts>
 
+#define consteval constexpr
+
 namespace std {
 
 #ifndef UNITS_HAS_STD_TYPE_IDENTITY

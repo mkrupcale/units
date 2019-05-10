@@ -190,11 +190,10 @@ struct merge_dimension {
 `units::unit` is a class template that expresses the unit of a specific physical dimension:
 
 ```cpp
-template<Dimension D, Ratio R>
-  requires (R::num > 0)
-struct unit : upcast_base<unit<D, R>> {
+template<Dimension D, auto C = ratio(1)>
+struct unit : upcast_base<unit<D, C>> {
   using dimension = D;
-  using ratio = R;
+  static constexpr auto converter = C;
 };
 ```
 
@@ -239,20 +238,22 @@ public:
   using dimension = D;
   using unit = U;
 
+  [[nodiscard]] static constexpr quantity one() noexcept; 
+
   template<Dimension D1, Unit U1, Number Rep1, Dimension D2, Unit U2, Number Rep2>
-      requires treat_as_floating_point<std::common_type_t<Rep1, Rep2>> || std::ratio_multiply<typename U1::ratio, typename U2::ratio>::den == 1
-  quantity<dimension_multiply_t<D1, D2>, upcasting_traits_t<unit<dimension_multiply_t<D1, D2>, std::ratio_multiply<typename U1::ratio, typename U2::ratio>>>, std::common_type_t<Rep1, Rep2>>
+      requires treat_as_floating_point<std::common_type_t<Rep1, Rep2>> || (U1.converter * U2.converter).den == 1
+  quantity<dimension_multiply_t<D1, D2>, upcasting_traits_t<unit<dimension_multiply_t<D1, D2>, U1.converter * U2.converter>>, std::common_type_t<Rep1, Rep2>>
   constexpr operator*(const quantity<D1, U1, Rep1>& lhs,
                       const quantity<D2, U2, Rep2>& rhs);
 
   template<Number Rep1, Dimension D, Unit U, Number Rep2>
-  quantity<dim_invert_t<D>, upcasting_traits_t<unit<dim_invert_t<D>, std::ratio<U::ratio::den, U::ratio::num>>>, std::common_type_t<Rep1, Rep2>>
+  quantity<dim_invert_t<D>, upcasting_traits_t<unit<dim_invert_t<D>, ratio(U::converter.den, U::converter.num}>>, std::common_type_t<Rep1, Rep2>>
   constexpr operator/(const Rep1& v,
                       const quantity<D, U, Rep2>& q) [[expects: q != quantity<D, U, Rep2>(0)]];
 
   template<Dimension D1, Unit U1, Number Rep1, Dimension D2, Unit U2, Number Rep2>
-      requires treat_as_floating_point<std::common_type_t<Rep1, Rep2>> || std::ratio_divide<typename U1::ratio, typename U2::ratio>::den == 1
-  quantity<dimension_divide_t<D1, D2>, upcasting_traits_t<unit<dimension_divide_t<D1, D2>, std::ratio_divide<typename U1::ratio, typename U2::ratio>>>, std::common_type_t<Rep1, Rep2>>
+      requires treat_as_floating_point<std::common_type_t<Rep1, Rep2>> || (U1.converter / U2.converter).den == 1
+  quantity<dimension_divide_t<D1, D2>, upcasting_traits_t<unit<dimension_divide_t<D1, D2>, U1.converter / U2.converter>>, std::common_type_t<Rep1, Rep2>>
   constexpr operator/(const quantity<D1, U1, Rep1>& lhs,
                       const quantity<D2, U2, Rep2>& rhs) [[expects: rhs != quantity<D, U2, Rep2>(0)]];
 };
@@ -381,8 +382,8 @@ template<> struct upcasting_traits<upcast_from<dimension_length>> : upcast_to<di
 ```
 
 ```cpp
-struct kilometer : unit<dimension_length, std::kilo> {};
-template<> struct upcasting_traits<upcast_from<kilometer>> : upcast_to<kilometer> {};
+struct meter : unit<dimension_length> {};
+template<> struct upcasting_traits<upcast_from<meter>> : upcast_to<meter> {};
 ```
 
 
@@ -416,7 +417,7 @@ concept Velocity = Quantity<T> && std::Same<typename T::dimension, dimension_vel
  - base unit
 
 ```cpp
-struct meter : unit<dimension_length, std::ratio<1>> {};
+struct meter : unit<dimension_length> {};
 template<> struct upcasting_traits<upcast_from<meter>> : upcast_to<meter> {};
 ```
 
@@ -442,7 +443,7 @@ inline namespace literals {
   constexpr auto operator""_mps(long double l)        { return velocity<meter_per_second, long double>(l); }
   
   constexpr auto operator""_kmph(unsigned long long l) { return velocity<kilometer_per_hour, std::int64_t>(l); }
-  constexpr auto operator""_kmph(long double l) { return velocity<kilometer_per_hour, long double>(l); }
+  constexpr auto operator""_kmph(long double l)        { return velocity<kilometer_per_hour, long double>(l); }
 }
 ```
 
@@ -565,16 +566,20 @@ Additionally, it should make the error logs even shorter thus easier to understa
     ```cpp
     units::quantity kmph = avg_speed(d, t);
     ```
-    It would be also incopatible with concepts named i.e. `Velocity`.
+    It would be also incompatible with concepts named i.e. `Velocity`.
 
 18. Should we standardize accompany tools (`type_list` operations, `static_sign`, `static_abs`,
     `static_gcd`, `common_ratio`)? 
      
 19. Do we need to support fractional exponents (i.e. `dimension<exp<"length", 2, 3>>` as 2/3)? 
 
-20. implicit conversion of quantity<Unit,Y> to quantity<Unit,Z> is allowed if Y and Z are implicitly convertible.
+20. Should `long long` UDL return quantity with `double` as a representation?
+
+21. When to stop witn classes as non-type tempalte parameters? Could a dimension be represented as
+    a compile time vector/array of exponents?
+
+22. implicit conversion of quantity<Unit,Y> to quantity<Unit,Z> is allowed if Y and Z are implicitly convertible.
     assignment between quantity<Unit,Y> and quantity<Unit,Z> is allowed if Y and Z are implicitly convertible.
 
-21. explicit conversion between quantity<Unit1,Y> and quantity<Unit2,Z> is allowed if Unit1 and Unit2 have the same dimensions and if Y and Z are implicitly convertible.
+23. explicit conversion between quantity<Unit1,Y> and quantity<Unit2,Z> is allowed if Unit1 and Unit2 have the same dimensions and if Y and Z are implicitly convertible.
     implicit conversion between quantity<Unit1,Y> and quantity<Unit2,Z> is allowed if Unit1 reduces to exactly the same combination of base units as Unit2 and if Y and Z are convertible.
-
